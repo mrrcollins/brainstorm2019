@@ -19,6 +19,11 @@ Python xlwt module to create Excel files:
 # Scripts and files
 
 * [anonschedule.csv](anonschedule.csv) - A sample schedule file
+* [newstudents.py](newstudents.py) - Script to add new students and to de-activate withdrawn students from the `users` table
+* [createcsvimports](createcsvimports) - Bash script to create all of the import files we use
+* [csv2excel.py](csv2excel.py) - Short python script to create an Excel file from a csv file for ConnectED
+* [mysql.cfg-sample](mysql.cfg-sample) - MySQL credentials for the [newstudents.py](newstudents.py) script. Rename to mysql.cfg and edit your credentials
+* [sql directory](sql/) - Database scheme with sample data and some sample SQL statements
 
 # GAM - Command Line Google Apps Manager
 
