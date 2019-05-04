@@ -3,3 +3,19 @@
 Here are the scripts and notes from my presentation for BrainStorm Sandusky 2019 on managing student accounts.
 
 The presentation [is available in Google Slides](https://docs.google.com/presentation/d/1P5umFjlrmPQ-DIM9-Du77Ards1tqbZM8ZIgZTXknsBQ/preview)
+
+# Prerequisites
+
+Python needs the MySQLdb module:
+
+    sudo apt update
+    sudo apt install python-pip python-dev libmysqlclient-dev
+    sudo pip install mysqlclient
+
+Python xlwt module to create Excel files:
+
+    sudo pip install xlwt
+
+# GAM - Command Line Google Apps Manager
+
+[jay0lee/GAM: command line management for Google G Suite](https://github.com/jay0lee/GAM)

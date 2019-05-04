@@ -1,0 +1,240 @@
+#!/bin/bash
+
+T=`date "+%Y%m%d"`
+OUTPATH=`date "+%Y%m%d"`
+SCHOLASTIC="Scholastic-${T}.csv"
+CONNECTED="Connected-${T}.csv"
+HSSI="hssi-${T}.csv"
+MSSI="mssi-${T}.csv"
+AIMSWEB="aimsweb-${T}.txt"
+TCI="tci${T}.csv"
+MOBYMAX="mobymax-${T}.csv"
+PAPERCUT="papercut.tsv"
+SHELL="shell-${T}.csv"
+KHS="khs-${T}.csv"
+KMS="kms-${T}.csv"
+ADOBE="adobe-${T}.csv"
+AD="ad-${T}.csv"
+
+mkdir -p ${OUTPATH}
+
+# Scholastic import
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${SCHOLASTIC}
+select username as USER_NAME,
+password as PASSWORD,
+uid as SIS_ID,
+firstname as FIRST_NAME,
+lastname as LAST_NAME,
+if((31-substr(username,1,2)) = 0, 'K', (31-substr(username,1,2))) AS GRADE,
+"Elementary School" AS SCHOOL_NAME,
+studentschedule.teacher_code AS CLASS_NAME
+from studentschedule
+    INNER JOIN users ON studentschedule.student_id = users.uid
+where 
+users.type='student' AND users.status='Active' 
+AND users.building LIKE '%Elementary%'  
+AND 
+    (
+    `studentschedule`.class_name LIKE '%Lang% Arts%'
+    OR
+    `studentschedule`.`class_name` LIKE '%CC-ELA 4-6%'
+    )
+AND dateadded > CURDATE();
+EOF
+
+# Adobe import
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${ADOBE}
+SELECT 
+"Federated ID" as "Identity Type",
+emailaddress as "Username",
+"DOMAIN" as "Domain",
+emailaddress as "Email",
+firstname as "First Name",
+lastname as "Last Name",
+"US" as "Country Code",
+"Default Spark with Premium Features for K-12 - 2 GB configuration" as "Product Configurations",
+"" as "Admin Roles",
+"" as "Product Configurations Administered",
+"" as "User Groups",
+"" as "User Groups Administered",
+"" as "Products Administered",
+"" as "Developer Access",
+"" as "Auto Assigned Products"
+FROM users
+WHERE
+users.type='student' AND users.status='Active'
+AND dateadded > CURDATE();
+EOF
+
+# ConnectED Import
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${CONNECTED}
+SELECT
+lastname AS 'Last Name (required)',
+firstname AS 'First Name (required)',
+'' AS 'Middle Initial (optional)',
+'' AS 'Gender (M or F) (required)',
+if(substr(username,1,2) = '31', 'K', 31-substr(username,1,2)) AS 'Grade Level (required)',
+username AS 'Username (recommended)',
+password AS 'Password (recommended)',
+'' AS 'Redemption Code (recommended)'
+FROM users
+WHERE status = 'Active'
+AND type = 'student'
+AND username < "32"
+AND dateadded > CURDATE();
+EOF
+
+./csv2excel.py
+
+# MS Study Island
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${MSSI}
+select uid as `SIS Primary Key`,
+concat(username,"@middleschool") AS `username`,
+concat(upper(substr(firstname,1,1)),lower(substr(firstname,2))) AS `first name`,
+concat(upper(substr(lastname,1,1)),lower(substr(lastname,2))) AS `last name`,
+`password` as `password`,
+31-substr(username,1,2) AS `grade`
+from users where building='Middle School' AND type='student' AND status='Active'
+AND dateadded > CURDATE();
+EOF
+
+
+# HS Study Island
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${HSSI}
+select uid as `SIS Primary Key`,
+concat(username,"@highschool") AS `username`,
+concat(upper(substr(firstname,1,1)),lower(substr(firstname,2))) AS `first name`,
+concat(upper(substr(lastname,1,1)),lower(substr(lastname,2))) AS `last name`,
+`password` as `password`,
+31-substr(username,1,2) AS `grade`
+from users where building='High School' AND type='student' AND status='Active'
+AND dateadded > CURDATE();
+EOF
+
+# AIMSWEB 
+#/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  unix2dos > $OUTPATH/${AIMSWEB}
+#SELECT
+#"Elementary" AS SchoolName,
+#TeacherFirstName,
+#TeacherLastName,
+#StudentFirstname,
+#StudentLastName,
+#UniqueIdentifier,
+#Grade,
+#"Kenton" AS DistrictName
+#FROM( SELECT 
+#uid AS `UniqueIdentifier`,
+#firstname as `StudentFirstName`,
+#lastname as `StudentLastName`,
+#if(substr(username,1,2) = '31', 'K', 31-substr(username,1,2)) AS `Grade`
+#FROM users
+#WHERE type='student'
+#AND status='Active'
+#AND building = 'Elementary School'
+#AND dateadded > CURDATE()
+#) AS S
+#JOIN
+#(
+#SELECT 
+#studentschedulefull.`Student ID` AS sid,
+#users.firstname AS TeacherFirstName,
+#users.lastname AS TeacherLastName
+#FROM users,studentschedulefull
+#WHERE `studentschedulefull`.`Class Name` = 'ADMINISTRATION'
+#AND users.teacher_code = studentschedulefull.teacher_code
+#) AS T
+#ON S.`UniqueIdentifier` = T.sid
+#EOF
+#
+
+# Mobymax
+
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${MOBYMAX}
+select
+    firstname as "Student's First Name",
+    lastname as "Student's Last Name",
+    uid as "Unique Student ID",
+    if((31-substr(username,1,2)) = 0, 'K', (31-substr(username,1,2))) AS "Student Grade Level",
+    username as "Student Username",
+    password as "Student Password",
+    staffemail as "Teacher's School Email Address"
+from users,studentschedulefull where
+    users.type='student' AND users.status='Active'
+    AND users.building LIKE '%Elementary%' AND users.uid=`studentschedulefull`.`Student ID`
+    AND (
+        `studentschedulefull`.`Class Name` = 'Administration'
+        OR
+        `studentschedulefull`.`Class Name` = 'CC-ELA 4-6'
+        )
+    AND users.username > "24%"
+    AND dateadded > CURDATE();
+EOF
+
+exit
+
+#TCI 4th-6th import
+
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${TCI}
+select
+    substr(firstname,1,1) AS first_initial,
+    lastname AS last_name,
+    username as username,
+    password as password,
+    password as password_confirmation,
+    staffemail as teacher_email,
+    CASE
+        WHEN substr(username,1,2) = "23" AND `Class Name` = 'Social Studies' THEN 'MS9398'
+        WHEN substr(username,1,2) = "24" AND `Class Name` = 'Social Studies' THEN 'MS2061'
+        WHEN substr(username,1,2) = "25" AND `Class Name` = 'Social Studies' THEN 'MS2047'
+        WHEN substr(username,1,2) = "26" AND `Class Name` = 'Science' THEN 'EL9817'
+        WHEN substr(username,1,2) = "26" AND `Class Name` = 'Social Studies' THEN 'ELOH5T'
+        WHEN substr(username,1,2) = "27" AND `Class Name` = 'Science' THEN 'EL9763'
+        WHEN `Class Name` = 'WORLD STUDIES' THEN 'HS9459'
+        WHEN `Class Name` = 'U.S. STUDIES' THEN 'HS0854'
+    END AS program_code,
+    cast(`Class Period` as signed) as class_period
+from users,studentschedulefull
+where
+    users.type='student' AND users.status='Active'
+    AND users.uid=`studentschedulefull`.`Student ID`
+    AND
+        (
+            (`studentschedulefull`.`Class Name` = 'Social Studies' AND users.username LIKE "25%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'Social Studies' AND users.username LIKE "26%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'Science' AND users.username LIKE "26%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'Social Studies' AND users.username LIKE "23%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'Social Studies' AND users.username LIKE "24%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'Science' AND users.username LIKE "27%")
+            OR
+            (`studentschedulefull`.`Class Name` = 'WORLD STUDIES')
+            OR
+            (`studentschedulefull`.`Class Name` = 'U.S. STUDIES')
+         )
+    AND dateadded > CURDATE()
+    ORDER BY username
+EOF
+
+# Active Directory import
+/usr/bin/mysql --defaults-extra-file=~/.readonly.cnf students <<"EOF" |  sed 's/	/,/g' > $OUTPATH/${AD}
+select
+    uid,
+    username,
+    firstname as FIRST_NAME,
+    lastname as LAST_NAME,
+    password as PASSWORD
+from users 
+where 
+    type='student' AND status='Active' 
+AND 
+    dateadded > CURDATE();
+EOF
+
+sed -i -e "1d" $OUTPATH/${AD}
+#scp $OUTPATH/${AD} admin@IPADDRESS:~/
+
+
