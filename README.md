@@ -6,8 +6,8 @@ The presentation [is available in Google Slides](https://docs.google.com/present
 
 Play around with the sample database with [phpMyAdmin](https://dev.ryancollins.org/phpmyadmin).
 
-Username: `brainstorm`
-Password: 
+* Username: `brainstorm`
+* Password: 
 
 # Prerequisites
 
